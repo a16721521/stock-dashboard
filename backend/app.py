@@ -123,6 +123,26 @@ def create_app(data_dir, ticker_fetcher=None, batch_fetcher=None):
         return {"scanned_at": cache["scanned_at"], "scanning": app.state.scanning,
                 "tab": tab, "rows": ranked}
 
+    def _wrapped_scan():
+        app.state.scanning = True
+        try:
+            _do_scan()
+        finally:
+            app.state.scanning = False
+
+    @app.on_event("startup")
+    def _startup():
+        from backend.scheduler import is_stale, start_background_timer
+        cache = load_cache(cache_path)
+        scanned_at = cache["scanned_at"] if cache else None
+        if is_stale(scanned_at):
+            import threading
+            threading.Thread(target=_wrapped_scan, daemon=True).start()
+        start_background_timer(
+            run_scan_callback=_wrapped_scan,
+            get_scanned_at=lambda: (load_cache(cache_path) or {}).get("scanned_at"),
+        )
+
     # ---- Static frontend ----
     if FRONTEND_DIR.exists():
         @app.get("/")
