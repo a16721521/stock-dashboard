@@ -18,6 +18,7 @@ def _client(tmp_path):
         data_dir=tmp_path,
         ticker_fetcher=lambda ticker, period: _trend_df(),
         batch_fetcher=lambda tickers, period: {t: _trend_df() for t in tickers},
+        name_fetcher=lambda ticker: f"{ticker} Inc.",
     )
     return TestClient(app)
 
@@ -42,6 +43,7 @@ def test_get_ticker_returns_series_and_signal(tmp_path):
     assert r.status_code == 200
     body = r.json()
     assert body["ticker"] == "AAPL"
+    assert body["name"] == "AAPL Inc."
     assert {"dates", "close", "wr", "rsi", "stochK", "stochD"} <= set(body["series"])
     assert "signal" in body["latest"] and "score" in body["latest"]
 

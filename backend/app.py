@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 import pandas as pd
 
 from backend import data as data_mod
+from backend import names as names_mod
 from backend.indicators import build_indicator_frame, classify_signal
 from backend.ranking import rank_rows
 from backend.scan import run_scan, save_cache, load_cache
@@ -28,17 +29,20 @@ def _json_series(s):
     return [None if pd.isna(v) else float(v) for v in s]
 
 
-def create_app(data_dir, ticker_fetcher=None, batch_fetcher=None):
+def create_app(data_dir, ticker_fetcher=None, batch_fetcher=None, name_fetcher=None):
     data_dir = Path(data_dir)
     data_dir.mkdir(parents=True, exist_ok=True)
     watchlist_path = data_dir / "watchlist.json"
     settings_path = data_dir / "settings.json"
     cache_path = data_dir / "scan_cache.json"
+    names_path = data_dir / "names_cache.json"
 
     if ticker_fetcher is None:
         ticker_fetcher = data_mod.fetch_history
     if batch_fetcher is None:
         batch_fetcher = data_mod.fetch_batch
+    if name_fetcher is None:
+        name_fetcher = names_mod._default_fetcher
 
     app = FastAPI(title="Indicator Dashboard")
     app.state.scanning = False
@@ -78,6 +82,7 @@ def create_app(data_dir, ticker_fetcher=None, batch_fetcher=None):
             last["WilliamsR"], last["RSI"], last["StochK"], settings["thresholds"])
         return {
             "ticker": symbol.upper(),
+            "name": names_mod.get_name(symbol.upper(), names_path, name_fetcher),
             "series": {
                 "dates": [d.strftime("%Y-%m-%d") for d in ind.index],
                 "close": _json_series(ind["Close"]),

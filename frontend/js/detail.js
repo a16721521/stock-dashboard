@@ -14,7 +14,8 @@ const Detail = {
       body.innerHTML = `<p class="empty">No data for ${sym}.</p>`;
       return;
     }
-    title.textContent = `${sym} — ${d.latest.signal} (${d.latest.price})`;
+    const namePart = d.name ? ` · ${d.name}` : "";
+    title.textContent = `${sym}${namePart} — ${d.latest.signal} (${d.latest.price})`;
     addBtn.hidden = false;
     addBtn.dataset.sym = sym;
     body.innerHTML = '<div id="detail-chart" style="height:100%;min-height:520px"></div>';
