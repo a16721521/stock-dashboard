@@ -22,7 +22,7 @@ body {
 .grid {
   display: grid; gap: 10px; padding: 10px;
   grid-template-columns: 320px 1fr;
-  grid-template-rows: minmax(320px, 1fr) minmax(220px, 40vh);
+  grid-template-rows: minmax(320px, 1fr) minmax(110px, 20vh);
   grid-template-areas: "watch detail" "market market";
   height: calc(100vh - 45px);
 }
