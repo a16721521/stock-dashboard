@@ -3,7 +3,7 @@ import pandas as pd
 
 from backend.indicators import (
     williams_r, rsi, stochastic, build_indicator_frame,
-    classify_signal, DEFAULT_THRESHOLDS,
+    DEFAULT_THRESHOLDS,
 )
 
 
@@ -33,19 +33,12 @@ def test_build_indicator_frame_columns(ohlc):
         assert col in out.columns
 
 
-def test_classify_all_oversold_is_strong_buy():
-    t = DEFAULT_THRESHOLDS
-    label, score = classify_signal(-90, 20, 10, t)
-    assert label == "Strong Buy" and score == 3
-
-
-def test_classify_all_overbought_is_strong_sell():
-    t = DEFAULT_THRESHOLDS
-    label, score = classify_signal(-10, 80, 90, t)
-    assert label == "Strong Sell" and score == -3
-
-
-def test_classify_neutral():
-    t = DEFAULT_THRESHOLDS
-    label, score = classify_signal(-50, 50, 50, t)
-    assert label == "Neutral" and score == 0
+def test_williams_r_equals_100_plus_raw_stoch_k(ohlc):
+    # Identity: raw Stochastic %K == 100 + Williams %R over the same window.
+    # (This is why Stochastic is not counted as an independent factor.)
+    wr = williams_r(ohlc)
+    low = ohlc["Low"].rolling(14).min()
+    high = ohlc["High"].rolling(14).max()
+    raw_k = (ohlc["Close"] - low) / (high - low) * 100
+    diff = (raw_k - (100 + wr)).dropna()
+    assert diff.abs().max() < 1e-9

@@ -1,5 +1,7 @@
 """FastAPI app: JSON API + static frontend. Fetchers are injectable for tests."""
 
+import threading
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -9,11 +11,15 @@ from fastapi.staticfiles import StaticFiles
 import pandas as pd
 
 from backend import data as data_mod
+from backend import market_calendar
 from backend import names as names_mod
-from backend.indicators import build_indicator_frame, classify_signal
+from backend.indicators import build_indicator_frame, classify_state
 from backend.ranking import rank_rows
-from backend.scan import run_scan, save_cache, load_cache
-from backend.settings import load_settings, save_settings
+from backend.scan import (
+    run_scan, build_cache_payload, commit_scan, load_cache,
+    settings_hash, universe_hash,
+)
+from backend.settings import SettingsModel, load_settings, save_settings
 from backend.universe import load_universe
 from backend.watchlist import load_watchlist, save_watchlist
 
@@ -46,6 +52,7 @@ def create_app(data_dir, ticker_fetcher=None, batch_fetcher=None, name_fetcher=N
 
     app = FastAPI(title="Indicator Dashboard")
     app.state.scanning = False
+    app.state.scan_lock = threading.Lock()
 
     # ---- Watchlist ----
     @app.get("/api/watchlist")
@@ -63,8 +70,8 @@ def create_app(data_dir, ticker_fetcher=None, batch_fetcher=None, name_fetcher=N
         return load_settings(settings_path)
 
     @app.put("/api/settings")
-    def put_settings(payload: dict):
-        save_settings(settings_path, payload)
+    def put_settings(payload: SettingsModel):
+        save_settings(settings_path, payload.model_dump())
         return {"ok": True}
 
     # ---- Ticker detail ----
@@ -78,11 +85,12 @@ def create_app(data_dir, ticker_fetcher=None, batch_fetcher=None, name_fetcher=N
         last = ind.iloc[-1]
         if last[["WilliamsR", "RSI", "StochK"]].isna().any():
             raise HTTPException(status_code=404, detail=f"Insufficient data for {symbol}")
-        signal, score = classify_signal(
-            last["WilliamsR"], last["RSI"], last["StochK"], settings["thresholds"])
+        cls = classify_state(
+            float(last["WilliamsR"]), float(last["RSI"]), settings["thresholds"])
         return {
             "ticker": symbol.upper(),
             "name": names_mod.get_name(symbol.upper(), names_path, name_fetcher),
+            "bar_date": ind.index[-1].strftime("%Y-%m-%d"),
             "series": {
                 "dates": [d.strftime("%Y-%m-%d") for d in ind.index],
                 "close": _json_series(ind["Close"]),
@@ -96,8 +104,9 @@ def create_app(data_dir, ticker_fetcher=None, batch_fetcher=None, name_fetcher=N
                 "wr": round(float(last["WilliamsR"]), 1),
                 "rsi": round(float(last["RSI"]), 1),
                 "stochK": round(float(last["StochK"]), 1),
-                "signal": signal,
-                "score": score,
+                "state": cls["state"],
+                "score": cls["score"],
+                "research_status": cls["research_status"],
             },
             "thresholds": settings["thresholds"],
         }
@@ -106,34 +115,95 @@ def create_app(data_dir, ticker_fetcher=None, batch_fetcher=None, name_fetcher=N
     def _do_scan():
         settings = load_settings(settings_path)
         universe = load_universe()
-        rows = run_scan(universe, settings["lookback"], batch_fetcher)
-        save_cache(cache_path, rows, "sp500+nasdaq100")
+        started = datetime.now(timezone.utc).isoformat()
+        result = run_scan(universe, settings["lookback"], batch_fetcher)
+        payload = build_cache_payload(
+            result,
+            lookback=settings["lookback"],
+            universe_id="sp500+nasdaq100",
+            universe_hash=universe_hash(universe),
+            settings_hash=settings_hash(settings),
+            expected_session_date=market_calendar.expected_session_date(),
+            started_at=started,
+            completed_at=datetime.now(timezone.utc).isoformat(),
+        )
+        outcome = commit_scan(cache_path, payload)
+        app.state.last_scan_outcome = outcome
+        return outcome
 
     @app.post("/api/scan/run")
     def scan_run():
-        app.state.scanning = True
-        try:
-            _do_scan()
-        finally:
-            app.state.scanning = False
-        return {"ok": True}
+        outcome = _wrapped_scan()
+        if outcome.get("reason") == "already_running":
+            raise HTTPException(status_code=409, detail="A scan is already running")
+        return outcome
 
     @app.get("/api/scan")
-    def scan_get(tab: str = "top_buy"):
+    def scan_get(tab: str = "most_oversold"):
         cache = load_cache(cache_path)
         settings = load_settings(settings_path)
         if cache is None:
-            return {"scanned_at": None, "scanning": app.state.scanning, "rows": []}
+            return {"scanned_at": None, "scanning": app.state.scanning,
+                    "status": None, "rows": []}
         ranked = rank_rows(cache["rows"], settings["thresholds"], tab)
-        return {"scanned_at": cache["scanned_at"], "scanning": app.state.scanning,
-                "tab": tab, "rows": ranked}
+        return {
+            "scanned_at": cache.get("completed_at") or cache.get("scanned_at"),
+            "scanning": app.state.scanning,
+            "tab": tab,
+            "status": cache.get("status"),
+            "latest_bar_date": cache.get("latest_bar_date"),
+            "expected_session_date": cache.get("expected_session_date"),
+            "coverage": cache.get("coverage"),
+            "rows": ranked,
+        }
+
+    def _data_warnings(cache, bar_status):
+        warnings = []
+        if cache is None:
+            warnings.append("No scan has run yet.")
+            return warnings
+        if bar_status == "stale":
+            warnings.append("Market data is stale (older than the last closed session).")
+        elif bar_status == "provisional":
+            warnings.append("Latest bar is provisional (current session not yet closed).")
+        elif bar_status == "unknown":
+            warnings.append("Data freshness unknown.")
+        cov = cache.get("coverage") or {}
+        if cov.get("missing"):
+            warnings.append(f"Partial coverage: {cov['missing']} of "
+                            f"{cov.get('requested')} symbols missing.")
+        if cache.get("status") == "failed":
+            warnings.append("Most recent scan failed; showing last known-good data.")
+        return warnings
+
+    @app.get("/api/data-status")
+    def data_status():
+        cache = load_cache(cache_path)
+        settings = load_settings(settings_path)
+        latest_bar = cache.get("latest_bar_date") if cache else None
+        status = market_calendar.bar_status(latest_bar)
+        return {
+            "expected_session_date": market_calendar.expected_session_date(),
+            "latest_bar_date": latest_bar,
+            "bar_status": status,
+            "cache_status": cache.get("status") if cache else None,
+            "coverage": cache.get("coverage") if cache else None,
+            "scanning": app.state.scanning,
+            "algorithm_version": cache.get("algorithm_version") if cache else None,
+            "settings_hash": settings_hash(settings),
+            "warnings": _data_warnings(cache, status),
+        }
 
     def _wrapped_scan():
+        # Non-blocking: if a scan is already running, skip rather than pile up.
+        if not app.state.scan_lock.acquire(blocking=False):
+            return {"committed": False, "reason": "already_running"}
         app.state.scanning = True
         try:
-            _do_scan()
+            return _do_scan()
         finally:
             app.state.scanning = False
+            app.state.scan_lock.release()
 
     @app.on_event("startup")
     def _startup():

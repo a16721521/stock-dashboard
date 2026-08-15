@@ -45,7 +45,8 @@ def test_get_ticker_returns_series_and_signal(tmp_path):
     assert body["ticker"] == "AAPL"
     assert body["name"] == "AAPL Inc."
     assert {"dates", "close", "wr", "rsi", "stochK", "stochD"} <= set(body["series"])
-    assert "signal" in body["latest"] and "score" in body["latest"]
+    assert "state" in body["latest"] and "research_status" in body["latest"]
+    assert body["latest"]["research_status"] == "Observation"
 
 
 def test_get_ticker_unknown_returns_404(tmp_path):
@@ -65,10 +66,48 @@ def test_settings_get_and_put(tmp_path):
     assert c.get("/api/settings").json()["thresholds"]["rsi_oversold"] == 25
 
 
+def test_put_invalid_settings_is_rejected_and_not_persisted(tmp_path):
+    c = _client(tmp_path)
+    good = c.get("/api/settings").json()
+    bad = c.get("/api/settings").json()
+    bad["thresholds"]["rsi_oversold"] = 0  # boundary -> would /0 in ranking
+    r = c.put("/api/settings", json=bad)
+    assert r.status_code == 422
+    # unchanged on disk
+    assert c.get("/api/settings").json() == good
+
+
 def test_scan_run_and_get(tmp_path):
     c = _client(tmp_path)
     assert c.post("/api/scan/run").status_code in (200, 202)
-    body = c.get("/api/scan?tab=top_buy").json()
+    body = c.get("/api/scan?tab=most_oversold").json()
     assert "rows" in body and "scanned_at" in body
     assert body["rows"], "scan should produce ranked rows"
-    assert body["rows"][0]["signal"]  # enriched with signal
+    assert body["rows"][0]["state"]  # enriched with factual state
+    assert body["rows"][0]["research_status"] == "Observation"
+    assert body["status"] in ("complete", "partial")
+    assert body["coverage"]["valid"] > 0
+
+
+def test_concurrent_scan_is_rejected_with_409(tmp_path):
+    c = _client(tmp_path)
+    # Simulate a scan already in progress by holding the lock.
+    assert c.app.state.scan_lock.acquire(blocking=False)
+    try:
+        assert c.post("/api/scan/run").status_code == 409
+    finally:
+        c.app.state.scan_lock.release()
+    # Once released, a scan runs normally again.
+    assert c.post("/api/scan/run").status_code == 200
+
+
+def test_data_status_reports_freshness_and_hashes(tmp_path):
+    c = _client(tmp_path)
+    c.post("/api/scan/run")
+    body = c.get("/api/data-status").json()
+    assert "expected_session_date" in body
+    assert "bar_status" in body
+    assert body["cache_status"] in ("complete", "partial")
+    assert body["algorithm_version"] == "indicators-v2"
+    assert isinstance(body["warnings"], list)
+    assert body["settings_hash"]
