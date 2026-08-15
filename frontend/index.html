@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Indicator Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="/vendor/sortable.min.js" defer></script>
+  <script src="/vendor/plotly.min.js" defer></script>
+  <script src="/js/api.js" defer></script>
+  <script src="/js/state.js" defer></script>
+  <script src="/js/detail.js" defer></script>
+  <script src="/js/watchlist.js" defer></script>
+  <script src="/js/marketwide.js" defer></script>
+  <script src="/js/settings.js" defer></script>
+  <script src="/js/main.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>Indicator Dashboard</h1>
+    <button id="settings-btn" class="btn">Settings</button>
+  </header>
+
+  <main class="grid">
+    <section id="watchlist-panel" class="box">
+      <div class="box-head">
+        <span>Watchlist</span>
+        <div class="box-actions">
+          <input id="add-ticker" class="mini-input" placeholder="Add ticker" />
+          <button id="add-group" class="btn-sm">+ Group</button>
+        </div>
+      </div>
+      <div id="watchlist-body" class="box-body"></div>
+    </section>
+
+    <section id="detail-panel" class="box">
+      <div class="box-head">
+        <span id="detail-title">Detail</span>
+        <button id="add-to-watchlist" class="btn-sm" hidden>+ Add to watchlist</button>
+      </div>
+      <div id="detail-body" class="box-body">
+        <p class="empty">Select a ticker to see its indicators.</p>
+      </div>
+    </section>
+
+    <section id="marketwide-panel" class="box">
+      <div class="box-head">
+        <div id="marketwide-tabs" class="tabs">
+          <button class="tab active" data-tab="top_buy">Top Buy</button>
+          <button class="tab" data-tab="top_sell">Top Sell</button>
+        </div>
+        <span id="scan-status" class="scan-status"></span>
+      </div>
+      <div id="marketwide-body" class="box-body grid-tiles"></div>
+    </section>
+  </main>
+
+  <div id="settings-modal" class="modal" hidden></div>
+</body>
+</html>

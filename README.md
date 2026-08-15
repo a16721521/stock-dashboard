@@ -1,51 +1,55 @@
-# Ticker Indicator Tracker
+# Indicator Dashboard
 
-A small local dashboard for tracking a watchlist of tickers against three
-momentum oscillators: Williams %R, RSI, and Stochastic %K/%D. It flags each
-ticker as Neutral, Watch, Buy/Sell, or Strong Buy/Sell based on how many of
-the three indicators are in oversold or overbought territory. You check it
-on your own schedule; it doesn't send notifications.
+A local web dashboard tracking a grouped watchlist against three momentum
+oscillators — Williams %R, RSI, and Stochastic %K/%D — plus a marketwide
+scanner over the S&P 500 + Nasdaq-100. You check it on your own schedule.
 
 ## Setup
 
-1. Install Python 3.10 or newer.
-2. In this folder, install dependencies:
-
+1. Python 3.10+ and a virtualenv:
    ```
-   pip install -r requirements.txt
+   python3 -m venv .venv
+   ./.venv/bin/pip install -r requirements.txt
    ```
-
-3. Run the app:
-
+2. Run:
    ```
-   streamlit run app.py
+   ./run.sh
    ```
+   Open http://localhost:8000.
 
-   It opens automatically in your browser, usually at `http://localhost:8501`.
+## Layout
 
-## Using it
+- **Left — Watchlist:** create named groups, drag tickers to reorder/regroup,
+  click a ticker to inspect it. Persists to `watchlist.json`.
+- **Right — Detail:** price + Williams %R + RSI + Stochastic charts with your
+  threshold lines.
+- **Bottom — Marketwide:** a dense grid of ~500 S&P 500 + Nasdaq-100 names,
+  ranked by the tab (Top Buy / Top Sell). Click a tile to inspect it.
+- **Settings:** thresholds + lookback window, applied to both the watchlist and
+  the marketwide ranking. Persists to `settings.json`.
 
-- **Add tickers** in the sidebar (any symbol Yahoo Finance recognizes, e.g. `AAPL`, `TSLA`, `NVDA`).
-- Tickers persist between runs in `watchlist.json` in this folder.
-- **Thresholds** for each indicator are adjustable sliders in the sidebar.
-  Defaults are the standard levels: Williams %R oversold at -80 / overbought
-  at -20, RSI at 30/70, Stochastic at 20/80.
-- The main table shows the latest reading for each ticker and a combined
-  Signal. "Strong Buy/Sell" means all three indicators agree; "Watch" means
-  only one does.
-- Pick a ticker under "Detail view" to see its price chart alongside each
-  indicator, with your threshold lines drawn in.
-- **Refresh data** in the sidebar clears the 5-minute data cache and re-pulls
-  prices. Daily bars don't need refreshing more often than that.
+## The marketwide scan
+
+Daily bars, so the scan runs once per day after the US close. It runs when you
+open the app if that day's scan hasn't happened yet, and again after the close
+while the app is open. Nothing runs while the app is closed. Results cache to
+`scan_cache.json`. Market holidays are not modelled specifically — at worst an
+unnecessary scan runs on a holiday.
 
 ## Notes and limitations
 
-- Price data comes from Yahoo Finance via the `yfinance` library, which is
-  unofficial and occasionally breaks when Yahoo changes something on their
-  end. If tickers stop loading, try `pip install --upgrade yfinance`.
-- This is signal *surfacing*, not trading advice or automated execution.
-  Nothing here places trades or predicts outcomes; it just flags when
-  price is at a statistical extreme relative to its recent range, which is
-  a starting point for your own judgment, not a conclusion.
-- All indicators use daily bars. Intraday tracking would need a different
-  data source and closer attention to API rate limits.
+- Price data is Yahoo Finance via `yfinance` (unofficial). If tickers stop
+  loading, try `./.venv/bin/pip install --upgrade yfinance`.
+- Signal *surfacing*, not trading advice. Nothing places trades.
+- Ticker symbols use Yahoo's format (e.g. `BRK-B`, not `BRKB` or `BRK.B`).
+  A symbol Yahoo doesn't recognize shows blank readings and is skipped.
+- Constituent lists are static files under `backend/constituents/`; update them
+  manually when membership changes.
+- No automated alerts by design — you check in manually.
+
+## Code layout
+
+- `backend/` — FastAPI app (`app.py`) plus focused modules: `indicators`,
+  `ranking`, `data`, `watchlist`, `settings`, `universe`, `scan`, `scheduler`.
+- `frontend/` — no-build HTML/CSS/JS; SortableJS + Plotly.js vendored.
+- `tests/` — pytest suite (`./.venv/bin/pytest`); network is always mocked.

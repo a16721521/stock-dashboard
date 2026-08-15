@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 .DS_Store
 scan_cache.json
+names_cache.json
