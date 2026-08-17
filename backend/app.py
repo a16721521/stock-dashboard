@@ -1,6 +1,7 @@
 """FastAPI app: JSON API + static frontend. Fetchers are injectable for tests."""
 
 import threading
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -50,7 +51,12 @@ def create_app(data_dir, ticker_fetcher=None, batch_fetcher=None, name_fetcher=N
     if name_fetcher is None:
         name_fetcher = names_mod._default_fetcher
 
-    app = FastAPI(title="Indicator Dashboard")
+    @asynccontextmanager
+    async def lifespan(_app):
+        _startup_tasks()   # defined below; bound by the time this runs
+        yield
+
+    app = FastAPI(title="Indicator Dashboard", lifespan=lifespan)
     app.state.scanning = False
     app.state.scan_lock = threading.Lock()
 
@@ -205,13 +211,11 @@ def create_app(data_dir, ticker_fetcher=None, batch_fetcher=None, name_fetcher=N
             app.state.scanning = False
             app.state.scan_lock.release()
 
-    @app.on_event("startup")
-    def _startup():
+    def _startup_tasks():
         from backend.scheduler import is_stale, start_background_timer
         cache = load_cache(cache_path)
-        scanned_at = cache["scanned_at"] if cache else None
+        scanned_at = (cache.get("completed_at") or cache.get("scanned_at")) if cache else None
         if is_stale(scanned_at):
-            import threading
             threading.Thread(target=_wrapped_scan, daemon=True).start()
         start_background_timer(
             run_scan_callback=_wrapped_scan,

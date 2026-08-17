@@ -56,6 +56,11 @@ const Marketwide = {
     el.textContent = "Data quality";
     const cov = s.coverage || {};
     const warns = (s.warnings || []);
+    const missing = cov.missing_symbols || [];
+    const missingHtml = missing.length
+      ? `<div class="dp-row"><b>Missing symbols (${missing.length}):</b>
+           <span class="dp-missing">${missing.join(", ")}</span></div>`
+      : "";
     body.innerHTML = `
       <div class="data-problems">
         <div class="dp-row"><b>Freshness:</b> ${s.bar_status || "unknown"}
@@ -63,6 +68,7 @@ const Marketwide = {
         <div class="dp-row"><b>Cache:</b> ${s.cache_status || "—"} ·
           coverage ${cov.valid ?? "—"}/${cov.requested ?? "—"} valid,
           ${cov.missing ?? "—"} missing</div>
+        ${missingHtml}
         <div class="dp-row"><b>Algorithm:</b> ${s.algorithm_version || "—"}</div>
         <div class="dp-warnings">
           ${warns.length ? warns.map((w) => `<div class="warn">⚠ ${w}</div>`).join("")

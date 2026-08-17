@@ -4,3 +4,7 @@ __pycache__/
 .DS_Store
 scan_cache.json
 names_cache.json
+
+# Runtime state (per-user, regenerated at runtime)
+watchlist.json
+settings.json

@@ -29,7 +29,7 @@ def test_run_scan_reports_rows_coverage_and_bar_date():
     res = run_scan(["AAA", "BBB"], "6mo", lambda t, p: fetched)
     assert {r["ticker"] for r in res["rows"]} == {"AAA", "BBB"}
     assert res["coverage"] == {"requested": 2, "downloaded": 2, "valid": 2,
-                               "missing": 0, "ratio": 1.0}
+                               "missing": 0, "ratio": 1.0, "missing_symbols": []}
     assert res["latest_bar_date"] == _trend_df().index[-1].date().isoformat()
 
 
@@ -38,6 +38,7 @@ def test_run_scan_skips_short_series_in_coverage():
     res = run_scan(["AAA", "SHORT"], "6mo", lambda t, p: fetched)
     assert {r["ticker"] for r in res["rows"]} == {"AAA"}
     assert res["coverage"]["valid"] == 1 and res["coverage"]["missing"] == 1
+    assert res["coverage"]["missing_symbols"] == ["SHORT"]
 
 
 def test_run_scan_survives_fetch_exception():
