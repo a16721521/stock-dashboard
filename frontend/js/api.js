@@ -8,7 +8,7 @@ const API = {
   },
   async getSettings() { return (await fetch("/api/settings")).json(); },
   async putSettings(data) {
-    await fetch("/api/settings", {
+    return fetch("/api/settings", {
       method: "PUT", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
