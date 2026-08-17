@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 
 from backend.indicators import DEFAULT_THRESHOLDS
 
@@ -50,21 +50,67 @@ class SettingsModel(BaseModel):
     lookback: Literal["3mo", "6mo", "1y", "2y"]
 
 
-def load_settings(path):
+def _load_raw_merged(path):
+    """Read + merge settings.json over defaults, WITHOUT validating.
+    Returns None if the file exists but is unparseable (corrupt/not an
+    object) — the caller decides how to handle that."""
     path = Path(path)
-    merged = {"thresholds": dict(DEFAULT_THRESHOLDS),
-              "lookback": DEFAULT_SETTINGS["lookback"]}
-    if path.exists():
-        try:
-            raw = json.loads(path.read_text())
-        except Exception:
-            raw = {}
-        if isinstance(raw, dict):
-            if isinstance(raw.get("thresholds"), dict):
-                merged["thresholds"].update(raw["thresholds"])
-            if raw.get("lookback") in LOOKBACK_CHOICES:
-                merged["lookback"] = raw["lookback"]
-    return merged
+    if not path.exists():
+        return {"thresholds": dict(DEFAULT_THRESHOLDS), "lookback": DEFAULT_SETTINGS["lookback"]}
+    try:
+        raw = json.loads(path.read_text())
+    except Exception:
+        return None
+    if not isinstance(raw, dict):
+        return None
+    thresholds = dict(DEFAULT_THRESHOLDS)
+    if isinstance(raw.get("thresholds"), dict):
+        thresholds.update(raw["thresholds"])
+    lookback = raw.get("lookback", DEFAULT_SETTINGS["lookback"])
+    return {"thresholds": thresholds, "lookback": lookback}
+
+
+def _preserve_invalid(path):
+    """Copy an invalid settings.json to settings.invalid.json for diagnosis
+    before it gets replaced by defaults, per P2-1: never silently discard a
+    manually edited file without a trace."""
+    path = Path(path)
+    if not path.exists():
+        return
+    try:
+        dest = path.with_name(path.stem + ".invalid" + path.suffix)
+        dest.write_text(path.read_text())
+    except Exception:
+        pass  # best-effort; must never block falling back to safe defaults
+
+
+def load_settings(path):
+    """Always returns a SettingsModel-valid dict. A missing file loads
+    defaults; a corrupt or out-of-range file (e.g. hand-edited or from an
+    older schema) is preserved for diagnosis and defaults are returned instead
+    — malformed persisted state must never reach ranking (P2-1)."""
+    merged = _load_raw_merged(path)
+    if merged is None:
+        return SettingsModel(**DEFAULT_SETTINGS).model_dump()
+    try:
+        return SettingsModel(**merged).model_dump()
+    except ValidationError:
+        _preserve_invalid(path)
+        return SettingsModel(**DEFAULT_SETTINGS).model_dump()
+
+
+def settings_health(path):
+    """Report whether the on-disk settings file (if any) is currently valid,
+    without mutating anything — used to surface a warning in /api/data-status
+    even when load_settings() has already silently fallen back to defaults."""
+    merged = _load_raw_merged(Path(path))
+    if merged is None:
+        return {"valid": False, "reason": "corrupt_or_unreadable"}
+    try:
+        SettingsModel(**merged)
+        return {"valid": True, "reason": None}
+    except ValidationError:
+        return {"valid": False, "reason": "validation_error"}
 
 
 def save_settings(path, data):
