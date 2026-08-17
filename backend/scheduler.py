@@ -1,46 +1,29 @@
-"""Scan staleness decisions + a lightweight background refresh timer.
+"""Generic recurring-scan timer.
 
-Holidays are not modelled; at worst a scan runs on a market holiday, which is
-harmless. Daily bars only settle after the US cash close (16:00 ET)."""
+This module deliberately knows nothing about trading sessions or cache
+validity — those decisions live in backend.market_calendar (session/bar-date
+freshness) and backend.scan.needs_scan (cache compatibility + freshness).
+Keeping a single calendar/validity model instead of a second one here is the
+fix for a real bug: an earlier version of this module had its own
+weekday-only staleness check that a fully-calendar-aware cache could
+disagree with, so the scheduler could accept a scan that was actually stale.
+"""
 
 import threading
-from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
-
-ET = ZoneInfo("America/New_York")
-CLOSE_HOUR = 16
 
 
-def most_recent_close(now):
-    """Datetime of the last weekday 16:00 ET at or before `now`."""
-    now = now.astimezone(ET)
-    candidate = now.replace(hour=CLOSE_HOUR, minute=0, second=0, microsecond=0)
-    if now < candidate:                 # before today's close → step back a day
-        candidate -= timedelta(days=1)
-    while candidate.weekday() >= 5:     # Sat=5, Sun=6 → walk back to Friday
-        candidate -= timedelta(days=1)
-    return candidate
+def start_background_timer(run_scan_callback, needs_scan_fn, interval_seconds=1800):
+    """Every `interval_seconds`, call run_scan_callback() if needs_scan_fn()
+    returns True. Returns the Timer thread (useful for tests/shutdown).
 
-
-def is_stale(scanned_at, now=None):
-    """True if there's no scan or it predates the most recent close."""
-    if now is None:
-        now = datetime.now(ET)
-    if not scanned_at:
-        return True
-    scanned = datetime.fromisoformat(scanned_at)
-    return scanned < most_recent_close(now)
-
-
-def start_background_timer(run_scan_callback, get_scanned_at, interval_seconds=1800):
-    """Every `interval_seconds`, run the scan if stale. Returns the Timer thread.
-
-    run_scan_callback(): performs a scan and writes the cache.
-    get_scanned_at(): returns the current cache's scanned_at (or None).
+    run_scan_callback(): performs a scan and (if valid) commits it.
+    needs_scan_fn(): no-arg predicate — should consult backend.scan.needs_scan
+        against the current cache, expected session, and calculation/universe
+        hashes.
     """
     def _tick():
         try:
-            if is_stale(get_scanned_at()):
+            if needs_scan_fn():
                 run_scan_callback()
         finally:
             timer = threading.Timer(interval_seconds, _tick)

@@ -1,41 +1,33 @@
-from datetime import datetime
-from zoneinfo import ZoneInfo
+"""Tests for the generic timer only. Freshness/staleness decisions are
+covered by backend.scan.needs_scan tests in tests/test_scan.py — this module
+has no calendar knowledge of its own (see scheduler.py docstring)."""
 
-from backend.scheduler import most_recent_close, is_stale
+import threading
 
-ET = ZoneInfo("America/New_York")
-
-
-def test_most_recent_close_same_day_after_4pm():
-    now = datetime(2026, 8, 14, 17, 0, tzinfo=ET)  # Friday 5pm
-    c = most_recent_close(now)
-    assert c == datetime(2026, 8, 14, 16, 0, tzinfo=ET)
+from backend.scheduler import start_background_timer
 
 
-def test_most_recent_close_before_4pm_uses_prior_weekday():
-    now = datetime(2026, 8, 14, 9, 0, tzinfo=ET)  # Friday 9am
-    c = most_recent_close(now)
-    assert c == datetime(2026, 8, 13, 16, 0, tzinfo=ET)  # Thursday close
+def test_start_background_timer_returns_a_timer():
+    timer = start_background_timer(
+        run_scan_callback=lambda: None,
+        needs_scan_fn=lambda: False,
+        interval_seconds=3600,
+    )
+    try:
+        assert isinstance(timer, threading.Timer)
+        assert timer.is_alive()
+    finally:
+        timer.cancel()
 
 
-def test_most_recent_close_weekend_uses_friday():
-    now = datetime(2026, 8, 16, 12, 0, tzinfo=ET)  # Sunday
-    c = most_recent_close(now)
-    assert c == datetime(2026, 8, 14, 16, 0, tzinfo=ET)  # Friday close
-
-
-def test_is_stale_true_when_no_scan():
-    now = datetime(2026, 8, 14, 17, 0, tzinfo=ET)
-    assert is_stale(None, now) is True
-
-
-def test_is_stale_false_when_scan_after_close():
-    now = datetime(2026, 8, 14, 17, 0, tzinfo=ET)
-    scanned = datetime(2026, 8, 14, 16, 30, tzinfo=ET).isoformat()
-    assert is_stale(scanned, now) is False
-
-
-def test_is_stale_true_when_scan_before_close():
-    now = datetime(2026, 8, 14, 17, 0, tzinfo=ET)
-    scanned = datetime(2026, 8, 14, 15, 0, tzinfo=ET).isoformat()  # before today's close
-    assert is_stale(scanned, now) is True
+def test_timer_does_not_fire_before_its_interval():
+    calls = []
+    timer = start_background_timer(
+        run_scan_callback=lambda: calls.append(1),
+        needs_scan_fn=lambda: True,
+        interval_seconds=3600,
+    )
+    try:
+        assert calls == []   # nothing fires within the test's lifetime
+    finally:
+        timer.cancel()

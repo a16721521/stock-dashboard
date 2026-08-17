@@ -71,6 +71,9 @@ body {
 .tab { border: 1px solid var(--frame-strong); background: #fff; padding: 2px 10px; cursor: pointer; }
 .tab.active { background: var(--text); color: #fff; }
 .scan-status { color: var(--muted); font-weight: 400; }
+.strip-warn { color: var(--ss-strong); font-weight: 600; }
+.strip-warn-badge { background: var(--ss-strong); color: #fff; border-radius: 10px;
+  padding: 0 6px; font-size: 11px; margin-left: 4px; }
 .grid-tiles {
   display: grid; gap: 3px;
   grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
@@ -105,6 +108,16 @@ body {
 .decision-summary .ds-grid { display: grid; grid-template-columns: 1fr 1fr;
   gap: 2px 16px; margin: 6px 0 4px; }
 .decision-summary .ds-note { color: var(--muted); font-style: italic; }
+.bar-badge { margin-left: 6px; }
+.bs-final { background: #eef; color: #334; }
+.bs-provisional { background: #fff3cd; color: #7a5b00; border-color: #e0c46c; }
+.bs-stale { background: #fde2e1; color: #8a1f1f; border-color: #e5a8a5; }
+.bs-unknown { background: #eee; color: #555; }
+
+.ranked-compare { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--frame);
+  font-size: 12px; }
+.ranked-compare div { padding: 2px 0; }
+.ranked-changed-note { color: var(--ss-strong); font-weight: 600; }
 
 /* Data Problems view */
 .data-problems { font-size: 13px; }
@@ -130,3 +143,5 @@ body {
 .slider-row select { justify-self: end; }
 .modal-actions { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; }
 .set-error { color: var(--ss-strong); font-size: 12px; margin-top: 8px; }
+.settings-section-label { font-size: 11px; text-transform: uppercase; letter-spacing: .03em;
+  color: var(--muted); margin: 12px 0 4px; border-top: 1px solid var(--frame); padding-top: 8px; }

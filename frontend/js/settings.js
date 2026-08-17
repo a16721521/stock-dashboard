@@ -1,7 +1,13 @@
-const THRESHOLD_KEYS = [
-  "wr_oversold", "wr_overbought", "rsi_oversold", "rsi_overbought",
-  "stoch_oversold", "stoch_overbought",
-];
+// Only Williams %R and RSI thresholds affect the Observation state and the
+// marketwide ranking (see backend.ranking / classify_state). Stochastic
+// thresholds only draw the chart overlay lines in the detail view — they are
+// deliberately NOT a ranking factor (raw Stochastic %K is ~0.95 correlated
+// with Williams %R, so counting both would double-count the same signal).
+// Grouping them separately in the UI keeps that distinction visible instead
+// of implying all six sliders equally drive the ranking.
+const RANKING_KEYS = ["wr_oversold", "wr_overbought", "rsi_oversold", "rsi_overbought"];
+const CHART_ONLY_KEYS = ["stoch_oversold", "stoch_overbought"];
+const THRESHOLD_KEYS = [...RANKING_KEYS, ...CHART_ONLY_KEYS];
 
 const SLIDER_CONFIG = {
   wr_oversold: { label: "Williams %R oversold", min: -100, max: 0, step: 1 },
@@ -33,7 +39,13 @@ const Settings = {
               `<option ${o === s.lookback ? "selected" : ""}>${o}</option>`).join("")}
           </select>
         </label>
-        ${THRESHOLD_KEYS.map((k) => Settings.sliderRow(k, t)).join("")}
+
+        <div class="settings-section-label">Ranking factors — drive Observation state &amp; marketwide ranking</div>
+        ${RANKING_KEYS.map((k) => Settings.sliderRow(k, t)).join("")}
+
+        <div class="settings-section-label">Chart overlay only — not a ranking factor</div>
+        ${CHART_ONLY_KEYS.map((k) => Settings.sliderRow(k, t)).join("")}
+
         <div id="set-error" class="set-error" hidden></div>
         <div class="modal-actions">
           <button class="btn" id="set-cancel">Cancel</button>
