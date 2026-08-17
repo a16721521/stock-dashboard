@@ -111,6 +111,8 @@ body {
 .data-problems .dp-row { padding: 3px 0; }
 .data-problems .warn { color: var(--ss-strong); padding: 2px 0; }
 .data-problems .ok { color: var(--sb-strong); }
+.data-problems .dp-missing { font-family: ui-monospace, monospace; color: var(--muted);
+  font-size: 12px; word-break: break-word; }
 
 /* Modal */
 .modal { position: fixed; inset: 0; background: rgba(0,0,0,.3);

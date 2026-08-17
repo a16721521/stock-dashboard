@@ -45,7 +45,7 @@ def run_scan(tickers, period, batch_fetcher):
     except Exception as exc:  # a broken fetch must not crash the scan
         return {"rows": [], "errors": [f"fetch failed: {exc}"],
                 "latest_bar_date": None,
-                "coverage": _coverage(len(tickers), 0, 0)}
+                "coverage": _coverage(len(tickers), 0, 0, list(tickers))}
 
     rows = []
     latest_bar = None
@@ -68,14 +68,17 @@ def run_scan(tickers, period, batch_fetcher):
         if latest_bar is None or bar_date > latest_bar:
             latest_bar = bar_date
 
+    valid_syms = {r["ticker"] for r in rows}
+    missing_syms = [t for t in tickers if t not in valid_syms]
     return {"rows": rows, "errors": [], "latest_bar_date": latest_bar,
-            "coverage": _coverage(len(tickers), len(frames), len(rows))}
+            "coverage": _coverage(len(tickers), len(frames), len(rows), missing_syms)}
 
 
-def _coverage(requested, downloaded, valid):
+def _coverage(requested, downloaded, valid, missing_symbols=None):
     return {"requested": requested, "downloaded": downloaded, "valid": valid,
             "missing": requested - valid,
-            "ratio": (valid / requested) if requested else 0.0}
+            "ratio": (valid / requested) if requested else 0.0,
+            "missing_symbols": missing_symbols or []}
 
 
 def build_cache_payload(scan_result, *, lookback, universe_id, universe_hash,
