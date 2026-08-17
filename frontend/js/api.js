@@ -19,5 +19,6 @@ const API = {
     return r.json();
   },
   async getScan(tab) { return (await fetch(`/api/scan?tab=${tab}`)).json(); },
+  async getDataStatus() { return (await fetch("/api/data-status")).json(); },
   async runScan() { await fetch("/api/scan/run", { method: "POST" }); },
 };

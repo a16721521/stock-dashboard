@@ -81,16 +81,36 @@ body {
   cursor: pointer; color: #fff; font-size: 11px; line-height: 1.2;
 }
 .tile .tsym { font-weight: 700; }
-.tile .tnum { font-variant-numeric: tabular-nums; opacity: .95; }
+.tile .tstate { font-size: 9px; opacity: .95; }
 
-/* Signal colors */
-.sig-strong-buy { background: var(--sb-strong); }
-.sig-buy { background: var(--sb); }
-.sig-watch-oversold { background: var(--sb-watch); color: #1a1a1a; }
-.sig-neutral { background: var(--neutral); }
-.sig-watch-overbought { background: var(--ss-watch); color: #1a1a1a; }
-.sig-sell { background: var(--ss); }
-.sig-strong-sell { background: var(--ss-strong); }
+/* Factual state colors (oversold = green, overbought = red, mixed = amber) */
+.st-deeply-oversold { background: var(--sb-strong); }
+.st-oversold { background: var(--sb); }
+.st-mildly-oversold { background: var(--sb-watch); color: #1a1a1a; }
+.st-neutral { background: var(--neutral); }
+.st-mildly-overbought { background: var(--ss-watch); color: #1a1a1a; }
+.st-overbought { background: var(--ss); }
+.st-deeply-overbought { background: var(--ss-strong); }
+.st-mixed { background: #b08900; }
+.st-invalid { background: #cfcfcf; color: #1a1a1a; }
+
+/* Research-status badge */
+.badge { display: inline-block; padding: 1px 7px; border: 1px solid var(--frame-strong);
+  font-size: 11px; font-weight: 600; }
+.badge-obs { background: #eef; color: #334; }
+
+/* Detail decision summary */
+.decision-summary { border: 1px solid var(--frame); background: #fafafa;
+  padding: 8px 10px; margin-bottom: 8px; }
+.decision-summary .ds-grid { display: grid; grid-template-columns: 1fr 1fr;
+  gap: 2px 16px; margin: 6px 0 4px; }
+.decision-summary .ds-note { color: var(--muted); font-style: italic; }
+
+/* Data Problems view */
+.data-problems { font-size: 13px; }
+.data-problems .dp-row { padding: 3px 0; }
+.data-problems .warn { color: var(--ss-strong); padding: 2px 0; }
+.data-problems .ok { color: var(--sb-strong); }
 
 /* Modal */
 .modal { position: fixed; inset: 0; background: rgba(0,0,0,.3);

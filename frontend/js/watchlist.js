@@ -69,8 +69,8 @@ const Watchlist = {
           row.querySelector(".wr").textContent = d.latest.wr;
           row.querySelector(".rsi").textContent = d.latest.rsi;
           const dot = row.querySelector(".dot");
-          dot.style.background = getComputedStyle(document.documentElement)
-            .getPropertyValue(dotVar(d.latest.signal));
+          dot.style.background = stateColor(d.latest.state);
+          dot.title = d.latest.state;
         });
       } catch (e) { /* skip unreadable ticker */ }
     }
@@ -131,11 +131,3 @@ const Watchlist = {
     Watchlist.refreshReadings();
   },
 };
-
-function dotVar(signal) {
-  return {
-    "Strong Buy": "--sb-strong", "Buy": "--sb", "Watch (oversold)": "--sb-watch",
-    "Neutral": "--neutral", "Watch (overbought)": "--ss-watch",
-    "Sell": "--ss", "Strong Sell": "--ss-strong",
-  }[signal] || "--neutral";
-}

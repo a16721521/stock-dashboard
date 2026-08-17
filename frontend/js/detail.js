@@ -15,12 +15,28 @@ const Detail = {
       return;
     }
     const namePart = d.name ? ` · ${d.name}` : "";
-    title.textContent = `${sym}${namePart} — ${d.latest.signal} (${d.latest.price})`;
+    title.textContent = `${sym}${namePart} — ${d.latest.state} (${d.latest.price})`;
     addBtn.hidden = false;
     addBtn.dataset.sym = sym;
-    body.innerHTML = '<div id="detail-chart" style="height:100%;min-height:520px"></div>';
+    body.innerHTML = Detail.summaryHtml(d) +
+      '<div id="detail-chart" style="height:520px"></div>';
     Detail.render(d);
     if (window.Watchlist) Watchlist.highlight(sym);
+  },
+
+  summaryHtml(d) {
+    const st = d.latest.state;
+    return `
+      <div class="decision-summary">
+        <span class="badge badge-obs">Observation</span>
+        <div class="ds-grid">
+          <div><b>Observation:</b> ${st}</div>
+          <div><b>Confirmation:</b> not applicable (no validated strategy)</div>
+          <div><b>Research status:</b> Observation</div>
+          <div><b>Data:</b> daily bar through ${d.bar_date || "—"}</div>
+        </div>
+        <div class="ds-note">Factual oscillator state — not a validated trade recommendation.</div>
+      </div>`;
   },
 
   render(d) {
