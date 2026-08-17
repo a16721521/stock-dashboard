@@ -1,0 +1,31 @@
+Universe: 518 tickers (current membership — survivorship-biased). Fetching 10y of history (batched)...
+Fetched 518/518 tickers in 22.9s. Building monthly panel...
+Panel: 60,359 ticker-months across 514 tickers, 2016-08-31 to 2026-08-31.
+
+Done in 26.6s total.
+
+====================================================================================================
+MOMENTUM DECILE SPREAD (top decile minus bottom decile, equal-weighted, monthly formation)
+====================================================================================================
+
+--- hold=1mo, target=raw (monthly, non-overlapping by construction) ---
+  n_months=108  mean_spread=0.902%/period  std=6.629%  t_stat=1.414  win_rate=56.5%
+  worst 5 formations: {Timestamp('2026-06-30 00:00:00'): -0.2551, Timestamp('2022-12-31 00:00:00'): -0.1852, Timestamp('2020-10-31 00:00:00'): -0.1338, Timestamp('2021-01-31 00:00:00'): -0.0955, Timestamp('2019-08-31 00:00:00'): -0.0954}
+  best 5 formations:  {Timestamp('2026-03-31 00:00:00'): 0.1957, Timestamp('2020-02-29 00:00:00'): 0.1804, Timestamp('2024-01-31 00:00:00'): 0.143, Timestamp('2026-05-31 00:00:00'): 0.1268, Timestamp('2019-07-31 00:00:00'): 0.1186}
+
+--- hold=1mo, target=mkt_adj (monthly, non-overlapping by construction) ---
+  n_months=108  mean_spread=0.902%/period  std=6.629%  t_stat=1.414  win_rate=56.5%
+  worst 5 formations: {Timestamp('2026-06-30 00:00:00'): -0.2551, Timestamp('2022-12-31 00:00:00'): -0.1852, Timestamp('2020-10-31 00:00:00'): -0.1338, Timestamp('2021-01-31 00:00:00'): -0.0955, Timestamp('2019-08-31 00:00:00'): -0.0954}
+  best 5 formations:  {Timestamp('2026-03-31 00:00:00'): 0.1957, Timestamp('2020-02-29 00:00:00'): 0.1804, Timestamp('2024-01-31 00:00:00'): 0.143, Timestamp('2026-05-31 00:00:00'): 0.1268, Timestamp('2019-07-31 00:00:00'): 0.1186}
+
+--- hold=3mo, target=raw (non-overlapping subsample) ---
+  n_months=36  mean_spread=2.146%/period  std=10.406%  t_stat=1.238  win_rate=58.3%
+  worst 5 formations: {Timestamp('2022-11-30 00:00:00'): -0.1518, Timestamp('2020-11-30 00:00:00'): -0.1478, Timestamp('2019-08-31 00:00:00'): -0.1451, Timestamp('2021-02-28 00:00:00'): -0.1309, Timestamp('2023-02-28 00:00:00'): -0.1023}
+  best 5 formations:  {Timestamp('2026-02-28 00:00:00'): 0.2522, Timestamp('2022-02-28 00:00:00'): 0.2313, Timestamp('2023-11-30 00:00:00'): 0.178, Timestamp('2020-02-29 00:00:00'): 0.172, Timestamp('2022-08-31 00:00:00'): 0.1264}
+
+--- hold=3mo, target=mkt_adj (non-overlapping subsample) ---
+  n_months=36  mean_spread=2.146%/period  std=10.406%  t_stat=1.238  win_rate=58.3%
+  worst 5 formations: {Timestamp('2022-11-30 00:00:00'): -0.1518, Timestamp('2020-11-30 00:00:00'): -0.1478, Timestamp('2019-08-31 00:00:00'): -0.1451, Timestamp('2021-02-28 00:00:00'): -0.1309, Timestamp('2023-02-28 00:00:00'): -0.1023}
+  best 5 formations:  {Timestamp('2026-02-28 00:00:00'): 0.2522, Timestamp('2022-02-28 00:00:00'): 0.2313, Timestamp('2023-11-30 00:00:00'): 0.178, Timestamp('2020-02-29 00:00:00'): 0.172, Timestamp('2022-08-31 00:00:00'): 0.1264}
+
+Full results written to /Users/frpo/Desktop/Indicator Dashboard/research/output/momentum_summary.csv and per-series momentum_spread_*.csv files
