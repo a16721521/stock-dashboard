@@ -121,3 +121,12 @@ body {
 .modal-card { background: #fff; border: 1px solid var(--frame-strong);
   padding: 16px; width: 340px; }
 .modal-card label { display: flex; justify-content: space-between; margin: 6px 0; }
+.modal-card h3 { margin: 0 0 10px; }
+.slider-row { display: grid; grid-template-columns: 150px 1fr 34px; align-items: center;
+  gap: 10px; margin: 8px 0; }
+.slider-row .sl-label { color: var(--text); }
+.slider-row input[type="range"] { width: 100%; }
+.slider-row .sl-val { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.slider-row select { justify-self: end; }
+.modal-actions { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; }
+.set-error { color: var(--ss-strong); font-size: 12px; margin-top: 8px; }
